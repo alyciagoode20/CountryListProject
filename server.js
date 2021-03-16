@@ -16,7 +16,7 @@ app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname + '/public/index.html'));
 });
 
-exec("g++ Dijkstras.cpp -o a.out");
+// exec("g++ Dijkstras.cpp -o a.out");
 app.post('/get_path', function(req, res) {
   console.log("REQUEST: " + req.name);
   const script = exec('./a.out');  // run a.out executable.
