@@ -18,7 +18,7 @@ app.get('/', function(req, res) {
 
 // exec("g++ Dijkstras.cpp -o a.out");
 app.post('/get_path', function(req, res) {
-  console.log("REQUEST: " + req.name);
+  console.log("REQUEST: " + req.body.name);
   const script = exec('./a.out');  // run a.out executable.
 
   script.stdin.setEncoding('utf-8');
@@ -28,11 +28,6 @@ app.post('/get_path', function(req, res) {
 
   script.stdin.end();
   script.stdout.on('data', (data)=>{
-      html = fs.readFileSync(__dirname + "/public/index.html", "utf8", function(err, data) {
-        if (err) console.log("ERROR in readFile", err);
-      });
-
-      data = html + data;
       res.send(data);
   });
   script.stderr.on('data', (data)=>{
