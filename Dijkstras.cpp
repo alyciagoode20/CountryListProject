@@ -2,10 +2,9 @@
 #include <vector>
 #include <fstream>
 
-#define INF 10000000
-
 using namespace std;
 
+// Node class contains info about Country. Could also be city, state, province, etc.
 class Node {
 public:
   string id;
@@ -14,11 +13,12 @@ public:
   Node(string name) {
     id = name;
     previous = NULL;
-    dist = INF;
-    // nodes.push_back(this);
+    dist = 10000000;  // infinity.
   }
 };
 
+// an edge is some arbitrary connection between nodes (in this case nodes are
+// countries, edges are shared borders.
 class Edge {
 public:
   Node* node1;
@@ -31,12 +31,16 @@ public:
   }
 
   bool Connected(Node* n1, Node* n2) {
+    // return true if the nodes share an edge.
     return ((n1 == node1 && n2 == node2) || (n1 == node2 && n2 == node1));
   }
 };
 
+
+// A class that contains the whole graph (continent). Every node and edge.
 class Graph {
 private:
+  // node list needs copy because nodes[i] are removed in Dijkstra's
   vector<Node*> nodes_cpy;
   vector<Node*> nodes;
   vector<Edge*> edges;
@@ -90,23 +94,22 @@ public:
     edges.push_back(e10);
     edges.push_back(e11);
 
-    usa->dist = 0;  // set start node
+    usa->dist = 0;  // set start node to USA
     nodes_cpy = nodes;
   }
 
+  // Get the end node input by the user (if it exists).
   Node* GetNode(string name) {
     for (int i = 0; i < nodes_cpy.size(); i++) {
-      // cout << "ID: " << nodes_cpy[i]->id << endl;
       if (name == nodes_cpy[i]->id) {
         return nodes_cpy[i];
       }
     }
-    // printf("Country does not exist\n");
-    // exit(0);
     return NULL;
   }
 
-  Node* ExtractSmallest(vector<Node*>& nodes) {
+  // Get the node with the smallest dist.
+  Node* GetSmallestDist(vector<Node*>& nodes) {
     int smallest_i = 0;
     Node* smallest = nodes.at(0);
     for (int i = 0; i < nodes.size(); i++) {
@@ -147,7 +150,8 @@ public:
     return adjNodes;
   }
 
-  int Distance(Node* node1, Node* node2) {
+  // Gets the edge between two nodes, returns the length
+  int Length(Node* node1, Node* node2) {
     const int size = edges.size();
     for (int i = 0; i < size; i++) {
       Edge* edge = edges.at(i);
@@ -158,9 +162,8 @@ public:
     return -1;
   }
 
-  void GetPathTo(Node* dest) {
+  void GetPath(Node* dest) {
     Node* prev = dest;
-    // cout << "Distance from start: " << dest->dist << endl;
     while (prev) {
       path.push_back(prev);
       prev = prev->previous;
@@ -169,10 +172,8 @@ public:
   }
 
   string SendPath() {
-    // ofstream file("output.txt");
     string result = "<ul>";
     for (int i = path.size() - 1; i >= 0; i--) {
-      // file << path[i]->id << endl;
       result +=  "<li>";
       result += path[i]->id;
       result += "</li>";
@@ -185,12 +186,12 @@ public:
 
   void Dijkstras() {
     while(nodes.size() > 0) {
-      Node* smallest = ExtractSmallest(nodes);
+      Node* smallest = GetSmallestDist(nodes);
       vector<Node*>* adj = AdjacentRemainingNodes(smallest);
 
       for (int i = 0; i < adj->size(); ++i) {
         Node* a = adj->at(i);
-        int distance = Distance(smallest, a) + smallest->dist;
+        int distance = Length(smallest, a) + smallest->dist;
         if (distance < a->dist) {
           a->dist = distance;
           a->previous = smallest;
@@ -202,24 +203,22 @@ public:
 };
 
 int main() {
-  // cout << "HELLO WORLD \n";
   Graph* g = new Graph();
   g->Dijkstras();
-  // Node* dest = g->GetNode("PAN");
 
   string input;
 
   cin >> input;  // Input is taken in from node server (server.js);
 
   Node* dest = g->GetNode(input);
-  g->GetPathTo(dest);
+  g->GetPath(dest);
   string result;
   if (dest != NULL) {
     result = g->SendPath();
     cout << result << endl;
     return 0;
   } else {
-    result = "That Country is not in the map. <br>";
+    result = "<ul><li>That Country is not in the map.</li></ul>";
     cout << result << endl;
     return 0;
   }
