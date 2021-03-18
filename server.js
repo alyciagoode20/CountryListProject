@@ -3,11 +3,11 @@ const exec = require("child_process").exec;
 var express = require("express");
 const body_parser = require("body-parser");
 var cluster = require('cluster');
-var cpus = require('os').cpus().length;  // get the number of available logical cpu cores.
+// var cpus = require('os').cpus().length;  // get the number of available logical cpu cores.
 
 if (cluster.isMaster) {
-  for (var i = 0; i < cpus; i++) {
-    cluster.fork();  // make a new process for each cpu.
+  for (var i = 0; i < 4; i++) {
+    cluster.fork();  
   }
 
   cluster.on('online', function(worker) {
