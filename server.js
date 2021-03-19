@@ -2,55 +2,89 @@ const fs = require("fs");
 const exec = require("child_process").exec;
 var express = require("express");
 const body_parser = require("body-parser");
-// var cpus = require('os').cpus().length;  // get the number of available logical cpu cores.
+var cluster = require('cluster');
+var cpus = require('os').cpus().length;  // get the number of available logical cpu cores.
 
-const app = express();
-const port = process.env.PORT || 8000;
+if (cluster.isMaster) {
+  for (var i = 0; i < cpus; i++) {
+    cluster.fork();  // make a new process for each cpu.
+  }
 
-app.use(express.static(__dirname + '/public'));
-app.use(body_parser.urlencoded());
-app.use(body_parser.json());
-
-var server = app.listen(port, () => console.log(`Listening on port ${port}...`));
-
-app.get('/', function(req, res) {
-  process.on('uncaughtException', function(err) {
-    console.error(err);
-    process.exit(1);
-    server.close();  // stop taking requests.
-    // cluster.worker.disconnect();  // Tell master worker is dead and needs replacing.
-    res.statusCode = 500;
-    res.setHeader('content-type', 'text-plain');
-    res.end("Sorry, there was a problem");
+  cluster.on('online', function(worker) {
+    console.log(worker.process.pid + "is online");
   });
-  res.sendFile(path.join(__dirname + '/public/index.html'));  // send index.html
-});
-
-app.post('/get_path', function(req, res) {
-  process.on('uncaughtException', function(err) {
-    console.error(err);
-    process.exit(1);
-    server.close();  // stop taking requests.
-    // cluster.worker.disconnect();  // Tell master worker is dead and needs replacing.
-    res.statusCode = 500;
-    res.setHeader('content-type', 'text-plain');
-    res.end("Sorry, there was a problem");
+  cluster.on("exit", function(worker, code, signal) {
+    console.log("Worker" + worker.process.pid + " is dead");
   });
-  // console.log("REQUEST: " + req.body.name);
-  const script = exec('./a.out');  // run a.out executable.
 
-  script.stdin.setEncoding('utf-8');
-  // script.stdout.pipe(process.stdout);  //
+} else {
+  const app = express();
+  const port = process.env.PORT || 8000;
 
-  script.stdin.write(req.body.name);  // write the Country Name from input to Dijkstra's
+  app.use(express.static(__dirname + '/public'));
+  app.use(body_parser.urlencoded());
+  app.use(body_parser.json());
 
-  script.stdin.end();  // Stop writing.
+  var server = app.listen(port, () => console.log(`Listening on port ${port}...`));
 
-  // script.stdout.pipe(process.stdout);  // sends the child process output to terminal
-  script.stdout.on('data', (data)=>{
-      res.send(data);
+  app.get('/', function(req, res) {
+    process.on('uncaughtException', function(err) {
+      console.error(err);
+      try {
+        var timer = setTimeout(function() {
+          process.exit(1);
+        }, 30000);
+        timer.unref();  // get rid of timer.
+        server.close();  // stop taking requests.
+        cluster.worker.disconnect();  // Tell master worker is dead and needs replacing.
+        res.statusCode = 500;
+        // res.setHeader('content-type', 'text-plain');
+        res.end("Sorry, problem");
+      }
+      catch(err2) {
+        console.err("Error sending 500!", er2.stack);
+      }
+    });
+    res.sendFile(path.join(__dirname + '/public/index.html'));  // send index.html
   });
-  script.stderr.on('data', (data)=>{
-      console.error(data);
+
+  app.post('/get_path', function(req, res) {
+    process.on('uncaughtException', function(err) {
+      console.error(err);
+      try {
+        var timer = setTimeout(function() {
+          process.exit(1);
+        }, 30000);
+        timer.unref();  // get rid of timer.
+        server.close();  // stop taking requests.
+        cluster.worker.disconnect();  // Tell master worker is dead and needs replacing.
+        res.statusCode = 500;
+        // res.setHeader('content-type', 'text-plain');
+        res.end("Sorry, there was a problem");
+      }
+      catch(er2) {
+        console.error("Error sending 500!", er2.stack);
+      }
+    });
+    // console.log("REQUEST: " + req.body.name);
+    const script = exec('./a.out');  // run a.out executable.
+
+    script.stdin.setEncoding('utf-8');
+    // script.stdout.pipe(process.stdout);  //
+
+    script.stdin.write(req.body.name);  // write the Country Name from input to Dijkstra's
+
+    script.stdin.end();  // Stop writing.
+
+    // script.stdout.pipe(process.stdout);  // sends the child process output to terminal
+    script.stdout.on('data', (data)=>{
+      res.write(data, function(err) {
+        // await sleep(1000);
+        res.end();  // sends end after write finishes. 
+      });
+    });
+    script.stderr.on('data', (data)=>{
+        console.error(data);
+    });
   });
-});
+}
